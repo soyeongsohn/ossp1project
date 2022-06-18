@@ -29,16 +29,13 @@ def download_file(url, name):
       for data in response.iter_content(chunk_size=1024):
         file.write(data)
 
-# download_file('https://www.dropbox.com/s/hv7b4eajrj7isyq/vgg_weights.pickle?dl=1',
-#                                'vgg_weights/vgg_weights.pickle' )
-# param_dict = pickle.load(open('/content/vgg_weights/vgg_weights.pickle', 'rb'))
-
 download_file('https://github.com/ftokarev/tf-vgg-weights/raw/master/vgg19_weights_normalized.h5',
                                 'vgg_weights/vgg19_weights_normalized.h')
 
 mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
 std = torch.tensor([0.229, 0.224, 0.225]).to(device)
 
+#이미지 정규화
 class Normalization(nn.Module):
     def __init__(self, mean, std):
         super(Normalization, self).__init__()
@@ -101,7 +98,7 @@ class VGG(torch.nn.Sequential):
     for p in self.parameters():#parameter가 training 되지 않게.
             p.requires_grad_(False)
 
-    self.load_params
+    self.load_params()
 
   def load_params(self):
         trained = [np.array(layer[1], 'float32') for layer in list(self.f.items())]
