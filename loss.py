@@ -7,176 +7,88 @@ Original file is located at
     https://colab.research.google.com/drive/1W_xYTscyYtWu1HYBj2XrASnWpA3kpXNw
 """
 
-# tensorflow
-# Brushstrock optimizer
-def content_loss(features_lhs, features_rhs, layers, weights, scale_by_y=False):
-    feat_lhs = [features_lhs[key] for key in layers]
-    feat_rhs = [features_rhs[key] for key in layers]
+# pytorch
+class StyleTransferLosses(VGG19):
+    def __init__(self, weight_file, content_img: T.Tensor, style_img: T.Tensor, content_layers, style_layers,
+                 scale_by_y=False, content_weights=None, style_weights=None):
+        super(StyleTransferLosses, self).__init__(weight_file)
 
-    if scale_by_y:
-        losses = [w * tf.reduce_mean(tf.square(xf-yf) * tf.minimum(yf, tf.sigmoid(yf))) for w, xf, yf, in zip(weights, feat_lhs, feat_rhs)]
-    else:
-        losses = [w * tf.reduce_mean(tf.square(xf-yf)) for w, xf, yf, in zip(weights, feat_lhs, feat_rhs)]
+        self.content_layers = content_layers
+        self.style_layers = style_layers
+        self.scale_by_y = scale_by_y
 
-    loss = tf.add_n(losses)
-    return loss
+        content_weights = content_weights if content_weights is not None else [1.] * len(self.content_layers)
+        style_weights = style_weights if style_weights is not None else [1.] * len(self.style_layers)
+        self.content_weights = {}
+        self.style_weights = {}
 
-def style_loss(features_lhs, features_rhs, layers, weights):
-    feat_lhs = [features_lhs[key] for key in layers]
-    feat_rhs = [features_rhs[key] for key in layers]
-    gram_matrices_lhs = get_gram_matrices(feat_lhs)
-    gram_matrices_rhs = get_gram_matrices(feat_rhs)
-    losses = [w * tf.reduce_sum(tf.square(gram_lhs - gram_rhs)) for w, gram_lhs, gram_rhs in zip(weights, gram_matrices_lhs, gram_matrices_rhs)]
-    loss = tf.add_n(losses)
-    return loss
+        content_features = content_img
+        style_features = style_img
+        self.content_features = {}
+        self.style_features = {}
+        if scale_by_y:
+            self.weights = {}
 
-def curviture_loss(s, e, c):
-    v1 = s - c
-    v2 = e - c
-    dist_se = norm(e - s, axis = -1) + 1e-6
-    return tf.reduce_mean(norm(v1 + v2, axis = -1) / dist_se)
+        i, j = 0, 0
+        self.to(content_img.device)
+        with T.no_grad():
+            for name, layer in self.named_children():
+                content_features = layer(content_features)
+                style_features = layer(style_features)
+                if name in content_layers:
+                    self.content_features[name] = content_features
+                    if scale_by_y:
+                        self.weights[name] = T.minimum(content_features, T.sigmoid(content_features))
 
-def total_variation_loss(x_loc, s, e, K=10):
+                    self.content_weights[name] = content_weights[i]
+                    i += 1
 
-    def projection(z):
-        x = tf.gather(z, axis = -1, indices=[0])
-        y = tf.gather(z, axis = -1, indices=[1])
-        return tf.concat([tf.square(x), tf.square(y), x * y], axis = -1)
+                if name in style_layers:
+                    self.style_features[name] = utils.gram_matrix(style_features)
+                    self.style_weights[name] = style_weights[j]
+                    j += 1
 
-    se_vec = e - s
-    se_vec_proj = projection(se_vec)
+    def forward(self, input):
+        content_loss, style_loss = 0., 0.
+        features = input
+        for name, layer in self.named_children():
+            features = layer(features)
+            if name in self.content_layers:
+                loss = features - self.content_features[name]
+                if self.scale_by_y:
+                    loss *= self.weights[name]
 
-    x_nn_idcs = get_nn_idxs(tf.expand_dims(x_loc, axis=0), k = K)
+                content_loss += (T.mean(loss ** 2) * self.content_weights[name])
 
-    x_nn_idcs = tf.squeeze(x_nn_idcs, axis=0)
-    x_sig_nns = tf.gather(se.vec, indices=x_nn_idcs, axis=0, batch_dims=0)
+            if name in self.style_layers:
+                loss = F.mse_loss(self.style_features[name], utils.gram_matrix(features), reduction='sum')
+                style_loss += (loss * self.style_weights[name])
 
-    dist_to_centroid = tf.reduce_mean(tf.reduce_sum(tf.square(projection(x_sig_nns) - tf.expand_dims(projection(se_vec), axis=-2)), axis=-1))
+        return content_loss, style_loss
+
+
+def total_variation_loss(location: T.Tensor, curve_s: T.Tensor, curve_e: T.Tensor, K=10):
+    se_vec = curve_e - curve_s
+    x_nn_idcs = knn_graph(location, k=K)[0]
+    x_sig_nns = se_vec[x_nn_idcs].view(*((se_vec.shape[0], K) + se_vec.shape[1:]))
+    dist_to_centroid = T.mean(T.sum((utils.projection(x_sig_nns) - utils.projection(se_vec)[..., None, :]) ** 2, dim=-1))
     return dist_to_centroid
 
-def draw_projection_loss(location, s, e, draw_curve_position, draw_curve_vector, draw_strength):
-    dist = tf.reduce_sum(tf.square(tf.expand_dims(draw_curve_position, axis=1)-location), axis=-1)
-    _, idcs = tf.math.top_k(-dist, k=draw_strength)
-    se_vec = e - s
-    strokes_vec_nn = tf.gather(se_vec, indices = idcs, axis=0)
-    strokes_vec_nn /= (norm(strokes_vec_nn, axis=-1, keepdims=True) + 1e-6)
-    curves_vec = draw_curve_vector / (norm(draw_curve_vector, axis=-1, keepdims=True) + 1e-6)
-    projection = tf.abs(tf.einsum('mki,mi->mk', strokes_vec_nn, curves_vec))
-    projection_loss = tf.reduce_mean(tf.square(1 - projection))
-    return projection_loss
 
-def extract_features(self, x):
-    features = {}
-        x = self._conv2d_block(x, self.param_dict['block1']['conv1']['weight'], self.param_dict['block1']['conv1']['bias'])
-        features['conv1_1'] = x
-        x = self._conv2d_block(x, self.param_dict['block1']['conv2']['weight'], self.param_dict['block1']['conv2']['bias'])
-        features['conv1_2'] = x
-        x = tf.nn.max_pool2d(x, ksize=2, strides=2, padding='VALID')
-        features['conv1_2_pool'] = x
+def curvature_loss(curve_s: T.Tensor, curve_e: T.Tensor, curve_c: T.Tensor):
+    v1 = curve_s - curve_c
+    v2 = curve_e - curve_c
+    dist_se = T.norm(curve_e - curve_s, dim=-1) + 1e-6
+    return T.mean(T.norm(v1 + v2, dim=-1) / dist_se)
 
-        x = self._conv2d_block(x, self.param_dict['block2']['conv1']['weight'], self.param_dict['block2']['conv1']['bias'])
-        features['conv2_1'] = x
-        x = self._conv2d_block(x, self.param_dict['block2']['conv2']['weight'], self.param_dict['block2']['conv2']['bias'])
-        features['conv2_2'] = x
-        x = tf.nn.max_pool2d(x, ksize=2, strides=2, padding='VALID')
-        features['conv2_2_pool'] = x
 
-        x = self._conv2d_block(x, self.param_dict['block3']['conv1']['weight'], self.param_dict['block3']['conv1']['bias'])
-        features['conv3_1'] = x
-        x = self._conv2d_block(x, self.param_dict['block3']['conv2']['weight'], self.param_dict['block3']['conv2']['bias'])
-        features['conv3_2'] = x
-        x = self._conv2d_block(x, self.param_dict['block3']['conv3']['weight'], self.param_dict['block3']['conv3']['bias'])
-        features['conv3_3'] = x
-        x = tf.nn.max_pool2d(x, ksize=2, strides=2, padding='VALID')
-        features['conv3_3_pool'] = x
+def tv_loss(x):
+    diff_i = T.mean((x[..., :, 1:] - x[..., :, :-1]) ** 2)
+    diff_j = T.mean((x[..., 1:, :] - x[..., :-1, :]) ** 2)
+    loss = diff_i + diff_j
+    return loss
 
-        x = self._conv2d_block(x, self.param_dict['block4']['conv1']['weight'], self.param_dict['block4']['conv1']['bias'])
-        features['conv4_1'] = x
-        x = self._conv2d_block(x, self.param_dict['block4']['conv2']['weight'], self.param_dict['block4']['conv2']['bias'])
-        features['conv4_2'] = x
-        x = self._conv2d_block(x, self.param_dict['block4']['conv3']['weight'], self.param_dict['block4']['conv3']['bias'])
-        features['conv4_3'] = x
-        x = tf.nn.max_pool2d(x, ksize=2, strides=2, padding='VALID')
-        features['conv4_3_pool'] = x
 
-        x = self._conv2d_block(x, self.param_dict['block5']['conv1']['weight'], self.param_dict['block5']['conv1']['bias'])
-        features['conv5_1'] = x
-        x = self._conv2d_block(x, self.param_dict['block5']['conv2']['weight'], self.param_dict['block5']['conv2']['bias'])
-        features['conv5_2'] = x
-        x = self._conv2d_block(x, self.param_dict['block5']['conv3']['weight'], self.param_dict['block5']['conv3']['bias'])
-        features['conv5_3'] = x
-        x = tf.nn.max_pool2d(x, ksize=2, strides=2, padding='VALID')
-        features['conv5_3_pool'] = x
-        return features
-
-def _conv2d_block(self, x, kernel, bias):
-        x = tf.nn.conv2d(x, filters=kernel, strides=[1, 1], padding=[[0, 0], [1, 1], [1, 1], [0, 0]])
-        x = tf.nn.bias_add(x, bias=bias, data_format='N...C')
-        x = tf.nn.relu(x)
-        return x
-
-def _losses(self):
-    # resize images to save memory
-    rendered_canvas_resize = tf.image.resize_nearest_neighbor(images=ops.preprocess_img(self.I), size=(int(self.canvas_height // 2), int(self.canvas_width // 2)))
-    content_img_resize = tf.image.resize_nearest_neighbor(images=ops.preprocess_img(self.content_img), size=(int(self.canvas_height // 2), int(self.canvas_width // 2)))
-    style_img_resize = tf.image.resize_nearest_neighbor(images=ops.preprocess_img(self.style_img), size=(int(self.canvas_height // 2), int(self.canvas_width // 2)))
-    
-    self.loss_dict = {}
-
-    self.loss_dict['content'] = ops.content_loss(self.vgg.extract_features(rendered_canvas_resized), 
-                                                 self.vgg.extract_feature(content_img_resized),
-                                                 #layers = ['conv1_2', 'conv2_2', 'conv3_2', 'conv4_2', 'conv5_2'],
-                                                 layers=['conv4_2', 'conv5_2'],
-                                                 weights=[1,1],
-                                                 scale_by_y=True)
-    self.loss_dict['content'] *= self.content_weight
-
-    self.loss_dict['style'] = ops.style_loss(self.vgg.extract_features(rendered_canvas_resized),
-                                             self.vgg.extract_features(style_img_resized),
-                                             layers=['conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1'],
-                                             weights=[1,1,1,1,1])
-    self.loss_dict['style'] *= self.style_weight
-
-    self.loss_dict['curviture'] = ops.curviture_loss(self.curve_s, self.curve_e, self.curve_c)
-    self.loss_dict['curviture'] *= self.curviture_weight
-
-    self.loss_dict['tv'] = ops.total_variation_loss(x_loc=self.location, s=self.curve_s, e=self.curve_e, K=10)
-    self.loss_dict['tv'] *= self.tv_weight
-
-    if hasattr(self, 'draw_curve_position') and hasattr(self, 'draw_curve_vector'):
-        self.loss_dict['drawing'] = ops.draw_projection_loss(self.location,
-                                                             self.curve_s,
-                                                             self.curve_e,
-                                                             self.draw_curve_position,
-                                                             self.draw_curve_vector,
-                                                             self.draw_strength)
-        self.loss_dict['drawing'] *= self.draw_weight
-
-# Pixel optimizer
-
-def _losses(self):
-    #resize images to save memory
-    rendered_canvas_resized = tf.image.resize_nearest_neighbor(images=ops.preprocess_img(self.canvas), size=(int(self.canvas_height), int(self.canvas_width)))
-    content_img_resized = tf.image.resize_nearest_neighbor(images=ops.preprocess_img(self.content_img), size=(int(self.canvas_height), int(self.canvas_width)))
-    style_img_resized = tf.image.resize_nearest_neighbor(images=ops.preprocess_img(self.style_img), size=(int(self.canvas_height), int(self.canvas_width)))
-
-    self.loss_dict = {}
-
-    self.loss_dict['content'] = ops.content_loss(self.vgg.extract_features(recdered_canvas_resized),
-                                                 self.vgg.extract_features(content_img_resized),
-                                                 layers=['conv1_2_pool', 'conv2_2_pool', 'conv3_3_pool', 'conv4_3pool', 'conv5_3_pool'],
-                                                 weights=[1,1,1,1,1])
-    self.loss_dict['content'] *= self.content_weight
-
-    self.loss_dict['style'] = ops.style_loss(self.vgg.extract_features(rendered_canvas_resized),
-                                             self.vgg.extract_features(style_img_resized),
-                                             layers=['conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1'],
-                                             weights=[1,1,1,1,1])
-    self.loss_dict['style'] *= self.style_weight
-
-    self.loss_dict['tv'] = ((tf.nn.l2_loss(self.canvas[1:, :, :] - self.canvas[:-1, :, :]) / self.canvas,shape.as_list()[0]) + 
-                            tf.nn.l2_loss(self.canvas[:, 1:, :] - self.canvas[:, :-1, :]) / self.canvas.shape.as_list()[1])
-    self.loss_dict['tv'] *= self.tv_weight
 
 
 
