@@ -1,13 +1,19 @@
+import numpy as np
 import torch
+import torch.nn as nn
 from torch.nn import functional as F
 from torch_cluster import knn
 from torchvision.transforms import functional
 
+from brushstroke import initialize_brushstrokes
+
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def quadratic_bezier_curve(s, e, c, n_points=10):
     
     N = s.shape[0]
-    t = torch.linspace(0., 1., n_points, dtype=torch.float32) #주어진 축을 따라 일정한 간격의 값 생성, t의 범위는 0과 1 사이
+    t = torch.linspace(0., 1., n_points, dtype=torch.float32).to(device) #주어진 축을 따라 일정한 간격의 값 생성, t의 범위는 0과 1 사이
     t = torch.stack([t] * N, dim=0)
     
     #각 point들을 x와 y로 분리
@@ -28,11 +34,10 @@ def quadratic_bezier_curve(s, e, c, n_points=10):
 
 def renderer(curve_points, location, color, width, H, W, K=20):
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
     N, S, _ = curve_points.shape  # brushstroke 수, sample point 수
 
     # init coordinates tensor (H * W * 2) -> from location
-    coordinate_x, coordinate_y = torch.tensor(location[:, 0]), torch.tensor(location[:, 1])
+    coordinate_x, coordinate_y = location[:, 0], location[:, 1]
 
     coordinate_x = torch.unsqueeze(coordinate_x, dim=1)
     coordinate_y = torch.unsqueeze(coordinate_y, dim=1)
@@ -41,10 +46,10 @@ def renderer(curve_points, location, color, width, H, W, K=20):
     location = torch.cat([coordinate_x, coordinate_y], dim=-1).to(device) # (6261, 2)
     
     # init tensor of brushstrokes colors
-    color = torch.tensor(color).to(device)
+    color = color.to(device)
 
     # init tensor of brushstorkes widths
-    width = torch.tensor(width).to(device)
+    width = width.to(device)
 
     # create tensor coarse of size H' * W' (H' = H * 0.1, W' = W * 0.1) (Appendix C.2)
     t_W = torch.linspace(0., W, int(W * 0.1), dtype=torch.float32).to(device)
@@ -84,9 +89,10 @@ def renderer(curve_points, location, color, width, H, W, K=20):
     B_a = nearest_Bs[..., indices_a, :] # start point of each segment
     indices_b = torch.LongTensor([i for i in range(1, S)]).to(device)
     B_b = nearest_Bs[..., indices_b, :] # end point of each segment
-    
+
     # distances from each sampled point on a stroke to each coordinate, shape = (H, W, K, S)
     B_ba = B_b - B_a
+    B_ba = B_ba.permute(1, 0, 2, 3, 4)
     p_B = torch.unsqueeze(torch.unsqueeze(p, axis=2), axis=2) - B_ba # (H, W, K, S, 2)
     t = torch.sum(B_ba * p_B, dim=-1) / (torch.sum(B_ba ** 2, dim=-1) + 1e-10) # 아주 작은 수를 더하여 division by zero 에러 방지 
     nearest_points = B_ba + torch.unsqueeze(t, axis=-1) * B_ba
@@ -96,15 +102,58 @@ def renderer(curve_points, location, color, width, H, W, K=20):
     # tensorflow의 reduce_min이 없고, 동시에 두 차원 못 줄여서 amin 두 번 씀
     D_ = torch.amin(dist_nearest_points, dim=-1) # (H, W, K)
     D = torch.amin(D_, dim=-1) # (H, W) 
-    # mask of each stroke, shape = (H, W, N)
-    mask = F.softmax(100000. * (1 / (1e-8 + D_)), dim=-1).float()  # (H, W, N)
+    D_ = D_.permute(1, 0, 2)
+    D = D.permute(1, 0)
+    # mask of each stroke, shape = (H, W, K)
+    mask = F.softmax(100000. * (1 / (1e-8 + D_)), dim=-1).float()  # (H, W, K)
     # rendering of each stroke, shape = (H, W, 3)
-    I_colors = torch.einsum('xync,xyn->xyc', nearest_Bs_colors, mask)  # (H, W, 3)
+    I_colors = torch.einsum('hwnc,hwn->hwc', nearest_Bs_colors, mask)  # (H, W, 3)
     # assignment, shape = (H, W, N)
-    bs = torch.einsum('xync,xyn->xyc', nearest_Bs_widths, mask)  # (H, W, 1)
+    bs = torch.einsum('hwnc,hwn->hwc', nearest_Bs_widths, mask)  # (H, W, 1)
     bs_mask = torch.sigmoid(bs - torch.unsqueeze(D, axis=-1))
     # final rendering
-    canvas = torch.ones(I_colors.shape)
+    canvas = torch.ones(I_colors.shape).to(device)
     I = I_colors * bs_mask + (1 - bs_mask) * canvas
 
     return I  # (H, W, 3)
+
+class Renderer(nn.Module):
+    def __init__(self, content_img, H, W, n_strokes=5000, S=10, K=20,
+                length_scale=1.1, width_scale=0.1):
+        super(Renderer, self).__init__()
+        
+        self.H = H
+        self.W = W
+        self.n_strokes = n_strokes
+        self.S = S
+        self.K = K
+        self.length_scale = length_scale
+        self.width_scale = width_scale
+
+        location, s, e, c, width, color = initialize_brushstrokes(content_img, n_strokes,
+                                                H, W, length_scale, width_scale)
+        
+        location = location[..., ::-1]
+        s = s[..., ::-1]
+        e = e[..., ::-1]
+        c = c[..., ::-1]
+
+        location = location.astype(np.float32)
+        s = s.astype(np.float32)
+        e = e.astype(np.float32)
+        c = c.astype(np.float32)
+
+        self.curve_s = nn.Parameter(torch.from_numpy(s.copy()), requires_grad=True)
+        self.curve_e = nn.Parameter(torch.from_numpy(e.copy()), requires_grad=True)
+        self.curve_c = nn.Parameter(torch.from_numpy(c.copy()), requires_grad=True)
+        self.color = nn.Parameter(torch.from_numpy(color.copy()), requires_grad=True)
+        self.location = nn.Parameter(torch.from_numpy(location.copy()), requires_grad=True)
+        self.width = nn.Parameter(torch.from_numpy(width.copy()), requires_grad=True)
+
+    def forward(self):
+        curve_points = quadratic_bezier_curve(self.curve_s+self.location, self.curve_e+self.location,
+                        self.curve_c+self.location, n_points=self.S)
+        canvas = renderer(curve_points, self.location, self.color, self.width,
+                self.H, self.W, self.K)
+        
+        return canvas
