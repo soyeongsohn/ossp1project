@@ -15,7 +15,7 @@ def initialize_brushstrokes(content_img, n_strokes, canvas_h, canvas_w, sec_scal
         max_size_factor=3., # Proportion of the maximum connected segment size. A value of 3 works in most of the cases.
         compactness=2,
         sigma=1, # Width of Gaussian smoothing kernel for pre-processing for each dimension of the image. 
-        start_label=0
+        start_label=1
 
     )
 
@@ -31,7 +31,7 @@ def initialize_brushstrokes(content_img, n_strokes, canvas_h, canvas_w, sec_scal
 
 
 def clusters2strokes(segments, img, H, W, sec_scale, width_scale):
-    segments += np.abs(np.min(segments))
+
     n_clusters = np.max(segments) + 1
     cluster_params = {'center': [],
                         's': [],
@@ -42,7 +42,7 @@ def clusters2strokes(segments, img, H, W, sec_scale, width_scale):
 
     N = 0
 
-    for cluster_idx in range(n_clusters):
+    for cluster_idx in range(1, n_clusters):
         cluster_mask = (segments==cluster_idx)
         if np.sum(cluster_mask) < 5:
             continue
@@ -80,7 +80,7 @@ def clusters2strokes(segments, img, H, W, sec_scale, width_scale):
         intersec_points = p + u.reshape(-1, 1) * (q - p)
         intersec_points = intersec_points[intersec_idcs] # m 을 지나는 a, b를 연결한 직선에 수직인 선과 edge의 교점
 
-        width = np.sum((intersec_points[0] - intersec_points[1]) ** 2) # 두 교점의 거리의 제곱(판별을 위한 것이므로 sqrt는 생략)
+        width = np.sqrt(np.sum((intersec_points[0] - intersec_points[1]) ** 2))
 
         if width == 0.: # 너비가 0이면 brushstroke를 형성하지 못함
             continue
