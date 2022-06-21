@@ -112,7 +112,7 @@ def renderer(curve_points, location, color, width, H, W, K=20):
     bs = torch.einsum('hwnc,hwn->hwc', nearest_Bs_widths, mask)  # (H, W, 1)
     bs_mask = torch.sigmoid(bs - torch.unsqueeze(D, axis=-1))
     # final rendering
-    canvas = torch.ones(I_colors.shape).to(device)
+    canvas = torch.ones(I_colors.shape).to(device) * 0.5 # gray
     I = I_colors * bs_mask + (1 - bs_mask) * canvas
 
     return I  # (H, W, 3)
