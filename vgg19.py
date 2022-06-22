@@ -29,14 +29,14 @@ file = h5py.File('/content/vgg_weights/vgg19_weights_normalized.h', mode='r')
 mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
 std = torch.tensor([0.229, 0.224, 0.225]).to(device)
 
-class Normalization(nn.Module):
-    def __init__(self, mean, std):
+class Normalization(T.nn.Module):
+    def __init__(self):
         super(Normalization, self).__init__()
-        self.mean = mean.clone().view(-1, 1, 1)
-        self.std = std.clone().view(-1, 1, 1)
+        self.register_buffer('kern', T.from_numpy(np.array([[0, 0, 255], [0, 255, 0], [255, 0, 0]], 'float32')[:, :, None, None]))
+        self.register_buffer('bias', T.from_numpy(np.array([-103.939, -116.779, -123.68], 'float32')))
 
-    def forward(self, img):
-        return (img - self.mean) / self.std
+    def forward(self, input):
+        return F.conv2d(input, self.kern, bias=self.bias, padding=0)
 
 class ConvRelu(torch.nn.Sequential):
     def __init__(self,
@@ -44,13 +44,14 @@ class ConvRelu(torch.nn.Sequential):
                  out_channels,
                  kernel_size=3,
                  stride=1,
-                 padding=0,
+                 padding=1,
                  dilation=1,
                  groups=1,
                  bias: bool = True,
                  padding_mode: str = 'zeros'
                  ):
         super(ConvRelu, self).__init__()
+        self.pad = nn.ReflectionPad2d(padding)
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size, stride=stride, padding=0, dilation=dilation,
                               groups=groups, bias=bias, padding_mode=padding_mode)
         self.relu = nn.ReLU()
@@ -59,7 +60,7 @@ class VGG(torch.nn.Sequential):
   def __init__(self, param_file):
     super(VGG, self).__init__()
     self.f = h5py.File(param_file, mode='r')
-    self.normalization = Normalization(mean, std)
+    self.normalization = Normalization()
 
     self.conv1_1 = ConvRelu(3, 64)
     self.conv1_2 = ConvRelu(64, 64)
