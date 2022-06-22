@@ -65,7 +65,8 @@ class BrushstrokeOptimizer:
   def optimize(self):
     vgg_loss = StyleTransferLosses(self.vgg_weight_file, self.content_img, self.style_img, self.content_layers, self.style_layers, scale_by_y=True)
     vgg_loss.to(device).eval() # evaluation 과정에 사용되지 않아야 하는 layer들 off
-    renderer = Renderer(self.content_img[0].permute(1, 2, 0).cpu().numpy(), self.canvas_h, self.canvas_w, self.n_strokes, self.S, self.K, self.length_scale, self.width_scale)
+    renderer = Renderer(self.content_img[0].permute(1, 2, 0).cpu().numpy(), self.canvas_h, self.canvas_w, self.n_strokes,
+                        self.S, self.K, self.length_scale, self.width_scale)
     renderer.to(device)
     optimizer = optim.Adam([renderer.location, renderer.curve_s, renderer.curve_e, renderer.curve_c, renderer.width], lr=1e-1)
     optimizer_color = optim.Adam([renderer.color], lr=1e-2)
@@ -83,11 +84,13 @@ class BrushstrokeOptimizer:
       curve_loss = curvature_loss(renderer.curve_s, renderer.curve_e, renderer.curve_c)
       curve_loss *= self.curv_weight
       
-      tv_loss = total_variation_loss(renderer.location, renderer.curve_s, renderer.curve_e,K=self.K) # 입력 이미지의 인접 픽셀 값에 대한 절대 차이로 이미지에 얼마나 많은 노이즈가 있는지 측정
+      tv_loss = total_variation_loss(renderer.location, renderer.curve_s, renderer.curve_e,K=self.K)
+      # 입력 이미지의 인접 픽셀 값에 대한 절대 차이로 이미지에 얼마나 많은 노이즈가 있는지 측정
       tv_loss *= self.tv_weight 
 
       loss = content_loss + style_loss + curve_loss + tv_loss
-      loss.backward(inputs=[renderer.location, renderer.curve_s, renderer.curve_e, renderer.curve_c, renderer.width], retain_graph=True) # loss function에 적용된 변수들에 대한 기울기 값
+      loss.backward(inputs=[renderer.location, renderer.curve_s, renderer.curve_e, renderer.curve_c, renderer.width], retain_graph=True)
+      # loss function에 적용된 변수들에 대한 기울기 값
       optimizer.step()
       style_loss.backward(inputs=[renderer.color], retain_graph=True)
       optimizer_color.step()
