@@ -88,7 +88,7 @@ def clusters2strokes(segments, img, H, W, sec_scale, width_scale):
         N +=1 # 형성된 brushstroke 수
 
         # 이미지 크기로 정규화하여 파라미터에 추가
-        center_x = np.median(cluster_mask_nonzeros[0]) / img.shape[0] # 논문에서는 mean
+        center_x = np.median(cluster_mask_nonzeros[0]) / img.shape[0] 
         center_y = np.median(cluster_mask_nonzeros[1]) / img.shape[1]
         cluster_params["center"].append(np.array([center_x, center_y]))
         cluster_params["s"].append(p_a / img.shape[:2])
@@ -103,7 +103,7 @@ def clusters2strokes(segments, img, H, W, sec_scale, width_scale):
         cluster_params[k] = np.array(cluster_params[k], dtype=np.float32)
     
     # resolution되었을 때 높이과 너비가 달라지므로 값을 재조정해야 함
-    rel_num_pixels = 5 * cluster_params['n_pixels'] / np.sqrt(H * W) # 5를 왜 곱하는지 모르겠다..
+    rel_num_pixels = cluster_params['n_pixels'] // np.sqrt(H * W) # 픽셀의 수는 정수여야하므로
 
     location = cluster_params["center"]
     s = cluster_params["s"]
