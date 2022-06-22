@@ -118,10 +118,6 @@ def clusters2strokes(segments, img, H, W, sec_scale, width_scale):
     e[:, 0] *= H
     e[:, 1] *= W
 
-    # 각 클러스터 내에서의 좌표 -> location으로 빼서 전체 이미지에 대한 좌표로 변경
-    s -= location
-    e -= location
-
     color = cluster_params["rgb"]
 
     # control point는 시작점과 끝점의 중간에서 random한 값을 더함
@@ -129,13 +125,6 @@ def clusters2strokes(segments, img, H, W, sec_scale, width_scale):
                                 np.random.uniform(low=-1, high=1, size=[N])],           
                                 axis=-1)
     
-    # s, e, c의 중심점
-    sec_center = (s + e + c) / 3
-
-    # 각 점에서 중심점을 뺌
-    s -= sec_center
-    e -= sec_center
-    c -= sec_center
 
     # scale 파라미터로 각각 scaling 해주기
     width = width_scale * rel_num_pixels.reshape(-1, 1) * cluster_width.reshape(-1, 1)
