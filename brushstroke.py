@@ -5,7 +5,7 @@ from scipy.spatial import ConvexHull # 모여있는 점들의 최외곽선을 �
 
 
 
-def initialize_brushstrokes(content_img, n_strokes, canvas_h, canvas_w, sec_scale, width_scale):
+def initialize_brushstrokes(content_img, n_strokes, canvas_h, canvas_w, length_scale, width_scale):
 
     # slic: segments image using k-means clustering in color-(x, y, z) space
     segments = slic(
@@ -24,13 +24,13 @@ def initialize_brushstrokes(content_img, n_strokes, canvas_h, canvas_w, sec_scal
                                                     content_img, 
                                                     canvas_h, 
                                                     canvas_w,
-                                                    sec_scale=sec_scale,
+                                                    length_scale=length_scale,
                                                     width_scale=width_scale)
 
     return location, s, e, c, width, color
 
 
-def clusters2strokes(segments, img, H, W, sec_scale, width_scale):
+def clusters2strokes(segments, img, H, W, length_scale, width_scale):
 
     n_clusters = np.max(segments) + 1
     cluster_params = {'center': [],
@@ -128,8 +128,8 @@ def clusters2strokes(segments, img, H, W, sec_scale, width_scale):
 
     # scale 파라미터로 각각 scaling 해주기
     width = width_scale * rel_num_pixels.reshape(-1, 1) * cluster_width.reshape(-1, 1)
-    s *= sec_scale
-    e *= sec_scale
-    c *= sec_scale
+    s *= length_scale
+    e *= length_scale
+    c *= length_scale
 
     return location, s, e, c, width, color
