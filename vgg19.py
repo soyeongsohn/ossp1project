@@ -29,11 +29,11 @@ file = h5py.File('/content/vgg_weights/vgg19_weights_normalized.h', mode='r')
 mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
 std = torch.tensor([0.229, 0.224, 0.225]).to(device)
 
-class Normalization(T.nn.Module):
+class Normalization(nn.Module):
     def __init__(self):
         super(Normalization, self).__init__()
-        self.register_buffer('kern', T.from_numpy(np.array([[0, 0, 255], [0, 255, 0], [255, 0, 0]], 'float32')[:, :, None, None]))
-        self.register_buffer('bias', T.from_numpy(np.array([-103.939, -116.779, -123.68], 'float32')))
+        self.register_buffer('kern', torch.from_numpy(np.array([[0, 0, 255], [0, 255, 0], [255, 0, 0]], 'float32')[:, :, None, None]))
+        self.register_buffer('bias', torch.from_numpy(np.array([-103.939, -116.779, -123.68], 'float32')))
 
     def forward(self, input):
         return F.conv2d(input, self.kern, bias=self.bias, padding=0)
@@ -56,9 +56,9 @@ class ConvRelu(torch.nn.Sequential):
                               groups=groups, bias=bias, padding_mode=padding_mode)
         self.relu = nn.ReLU()
 
-class VGG(torch.nn.Sequential):
+class VGG19(torch.nn.Sequential):
   def __init__(self, param_file):
-    super(VGG, self).__init__()
+    super(VGG19, self).__init__()
     self.f = h5py.File(param_file, mode='r')
     self.normalization = Normalization()
 
