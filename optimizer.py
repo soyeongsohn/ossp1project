@@ -57,7 +57,7 @@ class BrushstrokeOptimizer:
     self.content_img = content_img
     self.style_img = style_img
 
-    self.content_layers = ['conv4_1', 'conv5_1']
+    self.content_layers = ['conv4_2', 'conv5_2']
     self.style_layers = ['conv1_1', 'conv2_1', 'conv3_1', 'conv4_1', 'conv5_1']
 
     self.vgg_weight_file = './vgg_weights/vgg19_weights_normalized.h'
