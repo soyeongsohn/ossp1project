@@ -1,7 +1,7 @@
 import torch
 from torch.nn import functional as F
 from torch_cluster import knn_graph
-from vgg19 import VGG
+from vgg19 import VGG19
 import utils
 
 class StyleTransferLosses(VGG19):
