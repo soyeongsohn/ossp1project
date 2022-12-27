@@ -21,9 +21,9 @@ def download_file(url, name):
         file.write(data)
 
 download_file('https://github.com/ftokarev/tf-vgg-weights/raw/master/vgg19_weights_normalized.h5',
-                                'vgg_weights/vgg19_weights_normalized.h')
+                                './vgg_weights/vgg19_weights_normalized.h')
 
-file = h5py.File('/content/vgg_weights/vgg19_weights_normalized.h', mode='r')
+file = h5py.File('./vgg_weights/vgg19_weights_normalized.h', mode='r')
 
 # 이미지 정규화
 mean = torch.tensor([0.485, 0.456, 0.406]).to(device)
@@ -56,7 +56,7 @@ class ConvRelu(torch.nn.Sequential):
                               groups=groups, bias=bias, padding_mode=padding_mode)
         self.relu = nn.ReLU()
 
-class VGG19(torch.nn.Sequential):
+class VGG19(nn.Sequential):
   def __init__(self, param_file):
     super(VGG19, self).__init__()
     self.f = h5py.File(param_file, mode='r')
