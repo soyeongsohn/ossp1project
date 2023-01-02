@@ -2,6 +2,7 @@
 
 Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes 논문 구현 프로젝트 (in PyTorch)<br/>
 공식 repo <a href="https://github.com/CompVis/brushstroke-parameterized-style-transfer">링크</a> <br/>
+<a href="https://github.com/justanhduc/brushstroke-parameterized-style-transfer/blob/master/losses.py">파이토치 링크</a>
 <br/>
 ### Use Case Diagram
 ![image](https://user-images.githubusercontent.com/60024018/178115869-d0ea7317-8a52-41d8-bb55-6bc63c850a19.png)
@@ -14,7 +15,7 @@ Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes 논문 구�
 
 좌측 상단이 렌더링이 제대로 진행되지 않음. 하지만 brushstroke의 질감은 살아 있는 느낌. <br/>
 <br/>
-맡은 부분: brushstroke, renderer, app <br/>
+맡은 부분: brushstroke, renderer, app, code refactoring <br/>
 
 #### streamlit
 ![image](https://user-images.githubusercontent.com/60024018/178115947-4ef7aabc-2464-4f3d-96a6-49cccf81dced.png)
