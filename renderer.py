@@ -46,6 +46,7 @@ def renderer(curve_points, location, color, width, H, W, K=20):
     location = torch.cat([coordinate_x, coordinate_y], dim=-1).to(device) # (6261, 2)
     
     # init tensor of brushstrokes colors
+    color = torch.clamp(color, 0, 1) # torch.clamp를 사용하여 상한/하한 값 설정 -> normalize한 color 값 범위(0~1) 안에 들어가도록!
     color = color.to(device)
 
     # init tensor of brushstorkes widths
