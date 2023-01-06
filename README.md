@@ -19,10 +19,10 @@ Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes 논문 구�
 ![image](https://user-images.githubusercontent.com/60024018/178115758-825d991b-1e41-497d-bc78-3aff76e46e2e.png) </br>
 좌측 상단이 렌더링이 제대로 진행되지 않음. 하지만 brushstroke의 질감은 살아 있는 느낌. <br/>
 - 이후 추가로 개선한 결과 </br>
-![image](https://user-images.githubusercontent.com/60024018/210918162-8ce80fb8-7703-4e9a-ad02-87cefa3e9cb4.png) </br>
-이전보다 조금 더 자연스러워진 걸 확인할 수 있으나 좌상단 일부가 아직 부자연스러움. <br/>
+![image](https://user-images.githubusercontent.com/60024018/210932962-b39afaa8-a267-4d11-85d6-265e5666e015.png) </br>
+첫 픽셀 하얀 것 빼고는 훨씬 개선된 것을 볼 수 있음.<br/>
 <br/>
-맡은 부분: brushstroke, renderer, app, code refactoring(optimizer) <br/>
+맡은 부분: brushstroke, renderer, app, code refactoring(optimizer class화) <br/>
 
 #### streamlit
 ![image](https://user-images.githubusercontent.com/60024018/178115947-4ef7aabc-2464-4f3d-96a6-49cccf81dced.png)
@@ -34,4 +34,4 @@ Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes 논문 구�
 
 ### 아쉬운점
 1. 코드 구현 시 막히는 부분이 있었다. 논문에 방법론이 구체적으로 나와있지 않았고, 프로젝트 마감 기한때문에 해당 부분은 tensorflow로 구현된 공식 repo를 참고하여 구현을 진행했다는 점에서 아쉬웠다.
-
+2. 논문에 나온 공식대로 구현했지만 결과물이 다르게 나왔다. 결국 논문 공식 repo에서 구현한 방향으로 수정해서 비슷한 결과물을 낼 수 있었다.
