@@ -19,10 +19,10 @@ Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes 논문 구�
 ![image](https://user-images.githubusercontent.com/60024018/178115758-825d991b-1e41-497d-bc78-3aff76e46e2e.png) </br>
 좌측 상단이 렌더링이 제대로 진행되지 않음. 하지만 brushstroke의 질감은 살아 있는 느낌. <br/>
 - 이후 추가로 개선한 결과 </br>
-![image](https://user-images.githubusercontent.com/60024018/210566973-63357399-21e3-438c-9f48-8ab509eed5a2.png) </br>
-이전보다 조금 더 자연스러워진 걸 확인할 수 있음. <br/>
+![image](https://user-images.githubusercontent.com/60024018/210918162-8ce80fb8-7703-4e9a-ad02-87cefa3e9cb4.png) </br>
+이전보다 조금 더 자연스러워진 걸 확인할 수 있으나 좌상단 일부가 아직 부자연스러움. <br/>
 <br/>
-맡은 부분: brushstroke, renderer, app, code refactoring <br/>
+맡은 부분: brushstroke, renderer, app, code refactoring(optimizer) <br/>
 
 #### streamlit
 ![image](https://user-images.githubusercontent.com/60024018/178115947-4ef7aabc-2464-4f3d-96a6-49cccf81dced.png)
