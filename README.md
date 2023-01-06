@@ -19,7 +19,8 @@ Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes 논문 구�
 ![image](https://user-images.githubusercontent.com/60024018/178115758-825d991b-1e41-497d-bc78-3aff76e46e2e.png) </br>
 좌측 상단이 렌더링이 제대로 진행되지 않음. 하지만 brushstroke의 질감은 살아 있는 느낌. <br/>
 - 이후 추가로 개선한 결과 </br>
-![image](https://user-images.githubusercontent.com/60024018/210932962-b39afaa8-a267-4d11-85d6-265e5666e015.png) </br>
+![image](https://user-images.githubusercontent.com/60024018/210933288-1606efb1-18e8-4b2d-96e7-67b2a28aeb00.png)
+ </br>
 첫 픽셀 하얀 것 빼고는 훨씬 개선된 것을 볼 수 있음.<br/>
 <br/>
 맡은 부분: brushstroke, renderer, app, code refactoring(optimizer class화) <br/>
