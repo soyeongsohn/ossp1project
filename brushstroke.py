@@ -88,8 +88,8 @@ def clusters2strokes(segments, img, H, W, length_scale, width_scale):
         N +=1 # 형성된 brushstroke 수
 
         # 이미지 크기로 정규화하여 파라미터에 추가
-        center_x = np.median(cluster_mask_nonzeros[0]) / img.shape[0] 
-        center_y = np.median(cluster_mask_nonzeros[1]) / img.shape[1]
+        center_x = np.mean(cluster_mask_nonzeros[0]) / img.shape[0] 
+        center_y = np.mean(cluster_mask_nonzeros[1]) / img.shape[1]
         cluster_params["center"].append(np.array([center_x, center_y]))
         cluster_params["s"].append(p_a / img.shape[:2])
         cluster_params["e"].append(p_b / img.shape[:2])
