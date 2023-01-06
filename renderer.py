@@ -26,8 +26,10 @@ def quadratic_bezier_curve(s, e, c, n_points=10):
     c_x = torch.unsqueeze(c[:, 0], dim=-1)
     c_y = torch.unsqueeze(c[:, 1], dim=-1)
 
-    x = (1. - t) ** 2 * s_x + 2 * (1. - t) * t * c_x + t ** 2 * e_x
-    y = (1. - t) ** 2 * s_y + 2 * (1. - t) * t * c_y + t ** 2 * e_y
+#     x = (1. - t) ** 2 * s_x + 2 * (1. - t) * t * c_x + t ** 2 * e_x
+#     y = (1. - t) ** 2 * s_y + 2 * (1. - t) * t * c_y + t ** 2 * e_y
+    x = c_x + (1. - t) ** 2 * (s_x - c_x) + t ** 2 * (e_x - c_x)
+    y = c_y + (1. - t) ** 2 * (s_y - c_y) + t ** 2 * (e_y - c_y)
 
     return torch.stack([x, y], axis=-1)
 
@@ -41,6 +43,9 @@ def renderer(curve_points, location, color, width, H, W, K=20):
 
     coordinate_x = torch.unsqueeze(coordinate_x, dim=1)
     coordinate_y = torch.unsqueeze(coordinate_y, dim=1)
+    
+    coordinate_x = torch.clamp(coordinate_x, 0, W)
+    coordinate_y = torch.clamp(coordinate_y, 0, H)
     
     # location으로 다시 합쳐주기
     location = torch.cat([coordinate_x, coordinate_y], dim=-1).to(device) # (6261, 2)
@@ -81,7 +86,7 @@ def renderer(curve_points, location, color, width, H, W, K=20):
     # sample points t in [0, 1] for k nearest
     t_H = torch.linspace(0., H, H).to(device)
     t_W = torch.linspace(0., W, W).to(device)
-    P_y, P_x = torch.meshgrid(t_H, t_W, indexing='xy')
+    P_x, P_y = torch.meshgrid(t_W, t_H, indexing='xy')
     p = torch.stack([P_x, P_y], dim=-1)
     
     # assign to every location only the K nearest strokes
@@ -94,8 +99,10 @@ def renderer(curve_points, location, color, width, H, W, K=20):
     # distances from each sampled point on a stroke to each coordinate, shape = (H, W, K, S)
     B_ba = B_b - B_a
     B_ba = B_ba.permute(1, 0, 2, 3, 4)
-    p_B = torch.unsqueeze(torch.unsqueeze(p, axis=2), axis=2) - B_ba # (H, W, K, S, 2)
+    p_B = torch.unsqueeze(torch.unsqueeze(p, axis=2), axis=2) - B_a # (H, W, K, S, 2)
+    # t: curve segment 내의 좌표점에 대한 projection
     t = torch.sum(B_ba * p_B, dim=-1) / (torch.sum(B_ba ** 2, dim=-1) + 1e-10) # 아주 작은 수를 더하여 division by zero 에러 방지 
+    t = torch.clamp(t, 0, 1)
     nearest_points = B_ba + torch.unsqueeze(t, axis=-1) * B_ba
     dist_nearest_points = torch.sum((torch.unsqueeze(torch.unsqueeze(p, axis=2), axis=2) - nearest_points) ** 2, dim=-1)
     
@@ -103,8 +110,7 @@ def renderer(curve_points, location, color, width, H, W, K=20):
     # tensorflow의 reduce_min이 없고, 동시에 두 차원 못 줄여서 amin 두 번 씀
     D_ = torch.amin(dist_nearest_points, dim=-1) # (H, W, K)
     D = torch.amin(D_, dim=-1) # (H, W) 
-    D_ = D_.permute(1, 0, 2)
-    D = D.permute(1, 0)
+
     # mask of each stroke, shape = (H, W, K)
     mask = F.softmax(100000. * (1 / (1e-8 + D_)), dim=-1).float()  # (H, W, K)
     # rendering of each stroke, shape = (H, W, 3)
