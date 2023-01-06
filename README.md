@@ -5,6 +5,10 @@ Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes 논문 구�
 <a href="https://github.com/justanhduc/brushstroke-parameterized-style-transfer/">파이토치 링크</a> </br>
 * 일부 기능은 팀원 모두 파이토치 repo 코드를 분석하여 공부하는 방향으로 진행하여 해당 링크 같이 올립니다.
 
+## 프로젝트 목적
+1. Style Transfer 동작 원리 이해하기
+2. 논문 읽고 구현하는 연습하기
+
 <br/>
 
 ### Use Case Diagram
@@ -34,5 +38,5 @@ Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes 논문 구�
 3. style transfer의 작동 원리를 배울 수 있었다.
 
 ### 아쉬운점
-1. 코드 구현 시 막히는 부분이 있었다. 논문에 방법론이 구체적으로 나와있지 않았고, 프로젝트 마감 기한때문에 해당 부분은 tensorflow로 구현된 공식 repo를 참고하여 구현을 진행했다는 점에서 아쉬웠다.
+1. 코드 구현 시 막히는 부분이 있었다. 논문에 방법론이 구체적으로 나와있지 않았고, 프로젝트 마감 기한때문에 해당 부분은 tensorflow로 구현된 공식 repo를 참고하여 분석하며 구현을 진행했다는 점에서 아쉬웠다.
 2. 논문에 나온 공식대로 구현했지만 결과물이 다르게 나왔다. 결국 논문 공식 repo에서 구현한 방향으로 수정해서 비슷한 결과물을 낼 수 있었다.
