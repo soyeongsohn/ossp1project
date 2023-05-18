@@ -1,6 +1,6 @@
 # ossp1project
 
-Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes 논문 구현 프로젝트 (in PyTorch)<br/>
+[Rethinking Style Transfer: From Pixels to Parameterized Brushstrokes](https://arxiv.org/abs/2103.17185) 논문 구현 프로젝트 (in PyTorch)<br/>
 공식 repo <a href="https://github.com/CompVis/brushstroke-parameterized-style-transfer">링크</a> <br/>
 <a href="https://github.com/justanhduc/brushstroke-parameterized-style-transfer/">파이토치 링크</a> </br>
 * 일부 기능은 팀원 모두 파이토치 repo 코드를 분석하여 공부하는 방향으로 진행하여 해당 링크 같이 올립니다.
